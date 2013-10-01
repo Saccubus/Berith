@@ -2,8 +2,8 @@ std::wstring getDirname(wchar_t* dir);
 std::string toMultiByte(std::wstring const& s);
 bool fileExists(std::string const& path);
 bool fileExists(std::wstring const& path);
-void showErrorDialog(std::wstring const& title, std::wstring const& contents, ...);
-void showErrorDialog(std::string const& title, std::string const& contents, ...);
+void showErrorDialog(const wchar_t* const title, const wchar_t* const fmt, ...);
+void showErrorDialog(const char* const title, const char* const fmt, ...);
 void logMessage(std::string const& tag, std::string const& fmt, ...);
 void logMessage(std::wstring const& tag, std::wstring const& fmt, ...);
 

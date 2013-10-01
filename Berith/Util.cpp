@@ -35,27 +35,27 @@ bool fileExists(std::wstring const& path)
 }
 
 
-void showErrorDialog(std::wstring const& title, std::wstring const& contents, ...)
+void showErrorDialog(const wchar_t* const title, const wchar_t* const fmt, ...)
 {
 	wchar_t buff[8192];
 	va_list args;
-	va_start(args, contents);
-	vswprintf_s(buff, contents.c_str(), args);
+	va_start(args, fmt);
+	vswprintf_s(buff, fmt, args);
 	va_end(args);
 
-	fprintf_s(stderr, "[%s] %s\n", title.c_str(), buff);
+	fwprintf_s(stderr, L"[%s] %s\n", title, buff);
 	MessageBoxW(NULL, buff, (std::wstring(L"Error at ")+title).c_str(),MB_OK | MB_ICONERROR);
 }
 
-void showErrorDialog(std::string const& title, std::string const& contents, ...)
+void showErrorDialog(const char* const title, const char* const fmt, ...)
 {
 	char buff[8192];
 	va_list args;
-	va_start(args, contents);
-	vsprintf_s(buff, contents.c_str(), args);
+	va_start(args, fmt);
+	vsprintf_s(buff, fmt, args);
 	va_end(args);
 
-	fprintf_s(stderr, "[%s] %s\n", title.c_str(), buff);
+	fprintf_s(stderr, "[%s] %s\n", title, buff);
 	MessageBoxA(NULL, buff, (std::string("Error at ")+title).c_str(),MB_OK | MB_ICONERROR);
 }
 
