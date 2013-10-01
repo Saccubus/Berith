@@ -68,10 +68,30 @@ int WINAPI WinMain(
 	int nCmdShow
 )
 {
-	initUtil();
-	logMsg("main", "Launching");
 	wchar_t buff[8192];
 	GetModuleFileName(GetModuleHandle(NULL), buff, 8192);
+	if(SW_NORMAL == nCmdShow) {
+		STARTUPINFO startupInfo;
+		PROCESS_INFORMATION processInfo;
+		ZeroMemory(&startupInfo,sizeof(startupInfo));
+		startupInfo.cb = sizeof(startupInfo);
+		startupInfo.dwFlags = STARTF_USESHOWWINDOW;
+		startupInfo.wShowWindow = SW_MAX;
+		if (0 == CreateProcessW(
+				buff,
+				NULL,
+				NULL,
+				NULL,
+				TRUE,
+				CREATE_NEW_CONSOLE,
+				NULL, NULL, &startupInfo, &processInfo)) {
+			errMsg("main", "Failed to create virtual console.");
+			return -1;
+		}
+		return 0;
+	}
+	initUtil();
+	logMsg("main", "Launching");
 	int const r = mainImpl(buff);
 	closeUtil();
 	return r;

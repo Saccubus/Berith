@@ -2,38 +2,25 @@
 #include "Util.h"
 #include <cassert>
 
-static FILE* fperr = nullptr;
-static FILE* fpout = nullptr;
+#include <io.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+static HANDLE fhandle;
 void initUtil()
 {
-	// FIXME: XXX: ?????
-	// Ç»Ç∫Ç©ç≈èâÇÃfreopenÇ™ñ≥éãÇ≥ÇÍÇƒÇµÇ‹Ç§ÅBstdinÇégÇÌÇ»Ç¢ÇÃÇ≈Ç≤Ç‹Ç©Ç∑
-	{
-		FILE* f;
-		errno_t e = _wfreopen_s(&f, L"__", L"r", stdin);
+	fhandle = CreateFileW(L"launch.log",GENERIC_WRITE,FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if(INVALID_HANDLE_VALUE == fhandle){
+		errMsg("init", "Failed to open launch.log");
 	}
-	{
-		errno_t e = _wfreopen_s(&fperr, L"stderr.log", L"w+", stderr);
-		if( e != 0 ){
-			errMsg("main", "Failed to redirect stderr: %d", e);
-		}
-		assert( stderr == fperr );
-	}
-	warnMsg("init", "stderr reopened.");
-	{ //redirect stdout/stderr to file.
-		errno_t e = _wfreopen_s(&fpout, L"stdout.log", L"w+", stdout);
-		if( e != 0 ){
-			errMsg("main", "Failed to redirect stdout: %d", e);
-		}
-		assert( stdout == fpout );
-	}
-	fpout = stdout;
+	SetStdHandle(STD_OUTPUT_HANDLE, fhandle);
+	SetStdHandle(STD_ERROR_HANDLE, fhandle);
+
 	logMsg("init", "stdout reopened.");
 }
 void closeUtil()
 {
-	fclose(fperr);
-	fclose(fpout);
+	CloseHandle(fhandle);
 }
 
 std::wstring getDirname(const wchar_t* dir)
@@ -69,84 +56,111 @@ bool fileExists(std::wstring const& path)
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-static void outMsg(FILE*stream, bool enableDiag, const wchar_t* const tag, const wchar_t* const fmt, va_list args)
+#define BUFF_SIZE (1024*16)
+
+static std::wstring getLastErrorMsg()
 {
-	wchar_t buff[1024*16];
-	vswprintf_s(buff, fmt, args);
-	fwprintf_s(stream, L"[%s] %s\n", tag, buff);
-	fflush(stream);
-	fflush(stream);
-	fflush(stream);
+	wchar_t* buff_;
+	FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), LANG_USER_DEFAULT, (LPWSTR)&buff_, 0, 0);
+	std::wstring r(buff_);
+	LocalFree(buff_);
+	return r;
+}
+
+static void outMsg(DWORD stream, bool enableDiag, const wchar_t* const tag, const wchar_t* const fmt, va_list args)
+{
+	wchar_t buff_[BUFF_SIZE];
+	wchar_t buff[BUFF_SIZE];
+	memset(buff_, 0, BUFF_SIZE);
+	memset(buff, 0, BUFF_SIZE);
+	_vsnwprintf_s(buff_, BUFF_SIZE, fmt, args);
+	DWORD len = _snwprintf_s(buff, BUFF_SIZE, L"[%s] %s\n", tag, buff_);
+	HANDLE hand = GetStdHandle(stream);
+	DWORD wlen;
+	auto str = toMultiByte(buff);
+	if( 0 == WriteFile(hand, str.c_str(), str.size(), &wlen, nullptr) ){
+		auto msg = getLastErrorMsg();
+		_snwprintf_s(buff, BUFF_SIZE, L"Failed to write console");
+		MessageBoxW(NULL, (std::wstring(buff)+L"\n"+msg).c_str(), L"Error",MB_OK | MB_ICONERROR);
+	}
 
 	if(enableDiag){
-		MessageBoxW(NULL, buff, (std::wstring(L"Error at ")+tag).c_str(),MB_OK | MB_ICONERROR);
+		MessageBoxW(NULL, buff_, (std::wstring(L"Error at ")+tag).c_str(),MB_OK | MB_ICONERROR);
 	}
 }
 
-static void outMsg(FILE*stream, bool enableDiag, const char* const tag, const char* const fmt, va_list args)
+static void outMsg(DWORD stream, bool enableDiag, const char* const tag, const char* const fmt, va_list args)
 {
-	char buff[1024*16];
-	vsprintf_s(buff, fmt, args);
-	fprintf_s(stream, "[%s] %s\n", tag, buff);
-	fflush(stream);
-	fflush(stream);
-	fflush(stream);
+	char buff_[BUFF_SIZE];
+	char buff[BUFF_SIZE];
+	memset(buff_, 0, BUFF_SIZE);
+	memset(buff, 0, BUFF_SIZE);
+	vsnprintf_s(buff_, BUFF_SIZE, fmt, args);
+	DWORD len = _snprintf_s(buff, BUFF_SIZE, "[%s] %s\n", tag, buff_);
+	HANDLE hand = GetStdHandle(stream);
+	DWORD wlen;
+	if( 0 == WriteFile(hand, buff, len, &wlen, nullptr) ){
+		auto msg = getLastErrorMsg();
+		wchar_t buff[BUFF_SIZE];
+		_snwprintf_s(buff, BUFF_SIZE, L"Failed to write console");
+		MessageBoxW(NULL, (std::wstring(buff)+L"\n"+msg).c_str(), L"Error",MB_OK | MB_ICONERROR);
+	}
 
 	if(enableDiag){
-		MessageBoxA(NULL, buff, (std::string("Error at ")+tag).c_str(),MB_OK | MB_ICONERROR);
+		MessageBoxA(NULL, buff_, (std::string("Error at ")+tag).c_str(),MB_OK | MB_ICONERROR);
 	}
 }
 
 void errMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
 {
-	assert( stderr == fperr );
+	assert( stderr == stderr );
 	va_list args;
 	va_start(args, fmt);
-	outMsg(fperr, true, tag, fmt, args);
+	outMsg(STD_ERROR_HANDLE, true, tag, fmt, args);
 	va_end(args);
 }
 
 void errMsg(const char* const tag, const char* const fmt, ...)
 {
-	assert( stderr == fperr );
+	assert( stderr == stderr );
 	va_list args;
 	va_start(args, fmt);
-	outMsg(fperr, true, tag, fmt, args);
+	outMsg(STD_ERROR_HANDLE, true, tag, fmt, args);
 	va_end(args);
 }
 
 void logMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
 {
-	assert( stdout == fpout );
+	assert( stdout == stdout );
 	va_list args;
 	va_start(args, fmt);
-	outMsg(fpout, false, tag, fmt, args);
+	outMsg(STD_OUTPUT_HANDLE, false, tag, fmt, args);
 	va_end(args);
 }
 
 void logMsg(const char* const tag, const char* const fmt, ...)
 {
-	assert( stdout == fpout );
+	assert( stdout == stdout );
 	va_list args;
 	va_start(args, fmt);
-	outMsg(fpout, false, tag, fmt, args);
+	outMsg(STD_OUTPUT_HANDLE, false, tag, fmt, args);
 	va_end(args);
 }
 
 void warnMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
 {
-	assert( stderr == fperr );
+	assert( stderr == stderr );
 	va_list args;
 	va_start(args, fmt);
-	outMsg(fperr, false, tag, fmt, args);
+	outMsg(STD_ERROR_HANDLE, false, tag, fmt, args);
 	va_end(args);
 }
 
 void warnMsg(const char* const tag, const char* const fmt, ...)
 {
-	assert( stderr == fperr );
+	assert( stderr == stderr );
 	va_list args;
 	va_start(args, fmt);
-	outMsg(fperr, false, tag, fmt, args);
+	outMsg(STD_ERROR_HANDLE, false, tag, fmt, args);
 	va_end(args);
 }
