@@ -8,18 +8,20 @@
 std::string const MainKlass = std::string("saccubus/Saccubus");
 std::string const JarFilename = std::string("Saccubus.jar");
 
-int mainImpl(std::wstring const& moduleFilename)
+int mainImpl(std::wstring const& moduleFilename, int argc, wchar_t** argv)
 {
 	std::vector<std::string> vmArgs;
 	std::vector<std::wstring> progArgs;
 	
 	std::string const progDir = toMultiByte(getDirname(moduleFilename.c_str()));
-//	for( int i=0; i<argc; ++i ) {
-//		fwprintf(stdout, (L"[main] [%d] \"%s\"\n"), i, argv[i]);
-//		if(i>=1){
-//			progArgs.emplace_back(argv[i]);
-//		}
-//	}
+	logMsg(L"main", L"self: %s", moduleFilename.c_str() );
+	logMsg(L"main", L"argc: %d", argc);
+	for( int i=0; i<argc; ++i ) {
+		logMsg(L"main", L"[%d] \"%s\"", i, argv[i]);
+		if(i>=1){
+			progArgs.emplace_back(argv[i]);
+		}
+	}
 	std::string const jarFilename = progDir+JarFilename;
 	if( !fileExists(jarFilename) ){
 		errMsg("main","Jar not found! => \"%s\"", jarFilename.c_str());
@@ -51,11 +53,13 @@ int mainImpl(std::wstring const& moduleFilename)
 	return r ? 0 : 1;
 }
 
+// Consoleモードにした時用の仮エントリポイント
+// 余計にある分には困らないです
 int main(int argc, wchar_t** argv)
 {
 	initUtil();
 	logMsg("main", "Launching");
-	int const r = mainImpl(argv[0]);
+	int const r = mainImpl(argv[0], argc-1, &argv[1]);
 	closeUtil();
 	return r;
 }
@@ -70,6 +74,8 @@ int WINAPI WinMain(
 {
 	wchar_t buff[8192];
 	GetModuleFileName(GetModuleHandle(NULL), buff, 8192);
+	int argc;
+	wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 	if(SW_NORMAL == nCmdShow) {
 		STARTUPINFO startupInfo;
 		PROCESS_INFORMATION processInfo;
@@ -92,7 +98,7 @@ int WINAPI WinMain(
 	}
 	initUtil();
 	logMsg("main", "Launching");
-	int const r = mainImpl(buff);
+	int const r = mainImpl(buff, argc-1, &argv[1]);
 	closeUtil();
 	return r;
 }
