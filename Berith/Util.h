@@ -7,5 +7,5 @@ void showErrorDialog(std::string const& title, std::string const& contents, ...)
 void logMessage(std::string const& tag, std::string const& fmt, ...);
 void logMessage(std::wstring const& tag, std::wstring const& fmt, ...);
 
-#define CERR(tag, fmt, ...) showErrorDialog(tag, fmt, __VA_ARGS__);
-#define COUT(tag, fmt, ...) logMessage(tag, fmt, __VA_ARGS__);
+#define CERR(...) showErrorDialog(__VA_ARGS__);
+#define COUT(...) logMessage(__VA_ARGS__);
