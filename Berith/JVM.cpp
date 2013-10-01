@@ -61,12 +61,19 @@ static PtrCreateJavaVM loadJvm()
 			hinstLib = LoadLibrary(clientJvm.c_str());
 		}else if(fileExists(serverJvm)){
 			hinstLib = LoadLibrary(serverJvm.c_str());
-		}
-		if( !hinstLib ) {
+		}else{
 			CERR("loadJvm", "failed to open jvm.dll");
 			return nullptr;
 		}
+		if( !hinstLib ) {
+			CERR("loadJvm", "failed to LoadLibrary.\nArchtecture (32bit/64bit) may be mismatched.");
+			return nullptr;
+		}
 		ptrCreateJavaVM = (PtrCreateJavaVM)GetProcAddress(hinstLib,"JNI_CreateJavaVM");
+		if( ptrCreateJavaVM ) {
+			CERR("loadJvm", "failed to Get JNI_CreateJavaVM addr.\nMaybe jvm library is broken.");
+			return nullptr;
+		}
 	}
 	return ptrCreateJavaVM;
 }
