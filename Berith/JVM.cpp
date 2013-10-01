@@ -2,10 +2,6 @@
 #include "JVM.h"
 #include "Util.h"
 
-static void error(std::string const& title, std::string const& msg)
-{
-}
-
 typedef jint (JNICALL *PtrCreateJavaVM)(JavaVM **, void **, void *);
 
 static std::wstring getJavaPath()
@@ -17,7 +13,7 @@ static std::wstring getJavaPath()
 		if(0 == _wgetenv_s(&size, buff, L"JAVA_HOME") && size > 0){
 			return buff;
 		}
-		COUT("getJavaPath", "$JAVA_HOME is not set.");
+		logMsg("getJavaPath", "$JAVA_HOME is not set.");
 	}
 	{
 		HKEY key;
@@ -39,9 +35,9 @@ static std::wstring getJavaPath()
 		if( !ans.empty() ){
 			return ans;
 		}
-		COUT("getJavaPath", "Registory value is not set.");
+		logMsg("getJavaPath", "Registory value is not set.");
 	}
-	CERR("JVM", "Java VM not installed.");
+	errMsg("JVM", "Java VM not installed.");
 	return L"";
 }
 
@@ -62,16 +58,16 @@ static PtrCreateJavaVM loadJvm()
 		}else if(fileExists(serverJvm)){
 			hinstLib = LoadLibrary(serverJvm.c_str());
 		}else{
-			CERR("loadJvm", "failed to open jvm.dll");
+			errMsg("loadJvm", "failed to open jvm.dll");
 			return nullptr;
 		}
 		if( !hinstLib ) {
-			CERR("loadJvm", "failed to LoadLibrary.\nArchtecture (32bit/64bit) may be mismatched.");
+			errMsg("loadJvm", "failed to LoadLibrary.\nArchtecture (32bit/64bit) may be mismatched.");
 			return nullptr;
 		}
 		ptrCreateJavaVM = (PtrCreateJavaVM)GetProcAddress(hinstLib,"JNI_CreateJavaVM");
 		if( !ptrCreateJavaVM ) {
-			CERR("loadJvm", "failed to Get JNI_CreateJavaVM addr.\nMaybe jvm library is broken.\nJAVA_HOME=\"%s\"", javaPath.c_str() );
+			errMsg("loadJvm", "failed to Get JNI_CreateJavaVM addr.\nMaybe jvm library is broken.\nJAVA_HOME=\"%s\"", javaPath.c_str() );
 			return nullptr;
 		}
 	}
@@ -101,12 +97,12 @@ bool withJava(std::vector<std::string> vmArgs, std::vector<std::wstring> progArg
 	{ //èâä˙âªÇ∑ÇÈ
 		jint ret = JNI_GetDefaultJavaVMInitArgs(&vm_args);
 		if (ret != JNI_OK) {
-			CERR("withJava", "Failed to open jvm: %d", ret);
+			errMsg("withJava", "Failed to open jvm: %d", ret);
 			return false;
 		}
 	}
-*/
 	COUT("withJava", "vm_args.version:%x\n", vm_args.version);
+*/
 
 	{
 		JavaVM* vm;
@@ -115,13 +111,14 @@ bool withJava(std::vector<std::string> vmArgs, std::vector<std::wstring> progArg
 		{ //vmÇ∆envÇéÊìæÇ∑ÇÈ
 			jint ret = initFunc(&vm, (void**)&env, &vm_args);
 			if (ret != JNI_OK) {
-				CERR("withJava", "create vm error:%d\n", ret);
+				errMsg("withJava", "create vm error:%d", ret);
 				return false;
 			}
+			logMsg("withJava", "VM Initialized");
 		}
 		bool const r = f(vm, env);
 		vm->DestroyJavaVM();
-		COUT("withJava", "VM destroyed");
+		logMsg("withJava", "VM destroyed");
 		return r;
 	}
 }

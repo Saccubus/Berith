@@ -34,44 +34,58 @@ bool fileExists(std::wstring const& path)
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-
-void showErrorDialog(const wchar_t* const title, const wchar_t* const fmt, ...)
+static void outMsg(FILE*stream, bool enableDiag, const wchar_t* const tag, const wchar_t* const fmt, va_list args)
 {
 	wchar_t buff[8192];
-	va_list args;
-	va_start(args, fmt);
 	vswprintf_s(buff, fmt, args);
-	va_end(args);
 
-	fwprintf_s(stderr, L"[%s] %s\n", title, buff);
-	MessageBoxW(NULL, buff, (std::wstring(L"Error at ")+title).c_str(),MB_OK | MB_ICONERROR);
+	if(enableDiag){
+		MessageBoxW(NULL, buff, (std::wstring(L"Error at ")+tag).c_str(),MB_OK | MB_ICONERROR);
+	}
+	fwprintf_s(stream, L"[%s] %s\n", tag, buff);
+	fflush(stream);
 }
 
-void showErrorDialog(const char* const title, const char* const fmt, ...)
+static void outMsg(FILE*stream, bool enableDiag, const char* const tag, const char* const fmt, va_list args)
 {
 	char buff[8192];
-	va_list args;
-	va_start(args, fmt);
 	vsprintf_s(buff, fmt, args);
-	va_end(args);
 
-	fprintf_s(stderr, "[%s] %s\n", title, buff);
-	MessageBoxA(NULL, buff, (std::string("Error at ")+title).c_str(),MB_OK | MB_ICONERROR);
+	if(enableDiag){
+		MessageBoxA(NULL, buff, (std::string("Error at ")+tag).c_str(),MB_OK | MB_ICONERROR);
+	}
+	fprintf_s(stream, "[%s] %s\n", tag, buff);
+	fflush(stream);
 }
 
-void logMessage(std::string const& tag, std::string const& fmt, ...)
+void errMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	vfprintf_s(stdout, fmt.c_str(), args);
+	outMsg(stderr, true, tag, fmt, args);
 	va_end(args);
-
 }
-void logMessage(std::wstring const& tag, std::wstring const& fmt, ...)
+
+void errMsg(const char* const tag, const char* const fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	vfwprintf_s(stdout, fmt.c_str(), args);
+	outMsg(stderr, true, tag, fmt, args);
 	va_end(args);
+}
 
+void logMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	outMsg(stdout, false, tag, fmt, args);
+	va_end(args);
+}
+
+void logMsg(const char* const tag, const char* const fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	outMsg(stdout, false, tag, fmt, args);
+	va_end(args);
 }

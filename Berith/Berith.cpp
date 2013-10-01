@@ -8,20 +8,8 @@
 std::string const MainKlass = std::string("saccubus/Saccubus");
 std::string const JarFilename = std::string("Saccubus.jar");
 
-
-//int _tmain(int argc, wchar_t* argv[])
-int WINAPI WinMain(
-	HINSTANCE hInstance, 
-	HINSTANCE hPrevInstance, 
-	LPSTR lpCmdLine, 
-	int nCmdShow
-)
+int mainImpl()
 {
-	{ //redirect stdout/stderr to file.
-		FILE* fp;
-		freopen_s(&fp, "stdout.log", "wb", stdout);
-		freopen_s(&fp, "stderr.log", "wb", stderr);
-	}
 	std::vector<std::string> vmArgs;
 	std::vector<std::wstring> progArgs;
 	
@@ -39,21 +27,21 @@ int WINAPI WinMain(
 //	}
 	std::string jarFilename = progDir+JarFilename;
 	if(!fileExists(jarFilename)){
-		CERR("main","Jar not found! => \"%s\"\n", jarFilename.c_str());
+		errMsg("main","Jar not found! => \"%s\"\n", jarFilename.c_str());
 		return -1;
 	}
 	vmArgs.push_back(std::string("-Djava.class.path=")+jarFilename);
-	vmArgs.push_back("-Djava.compiler=NONE");
+	//vmArgs.push_back("-Djava.compiler=NONE");
 	//vmArgs.push_back("-verbose:jni");
-	withJava(vmArgs, progArgs, [&progArgs](JavaVM* vm, JNIEnv* env)->bool{
+	bool const r = withJava(vmArgs, progArgs, [&progArgs](JavaVM* vm, JNIEnv* env)->bool{
 		jclass klass = env->FindClass( MainKlass.c_str() );
 		if(!klass) {
-			CERR("main", "Klass %s not found.\n", MainKlass.c_str());
+			errMsg("main", "Klass %s not found.\n", MainKlass.c_str());
 			return false;
 		}
 		jmethodID method = env->GetStaticMethodID(klass, "main", "([Ljava/lang/String;)V");
 		if(!method) {
-			CERR("main", "method main not found.\n");
+			errMsg("main", "method main not found.\n");
 			return false;
 		}
 		jobjectArray array = (jobjectArray)env->NewObjectArray(static_cast<jsize>(progArgs.size()), env->FindClass("java/lang/String"), env->NewStringUTF(""));
@@ -65,6 +53,35 @@ int WINAPI WinMain(
 		env->CallStaticVoidMethod(klass, method, array);
 		return true;
 	});
-	return 0;
+	return r ? 0 : 1;
+}
+
+//int _tmain(int argc, wchar_t* argv[])
+int WINAPI WinMain(
+	HINSTANCE hInstance, 
+	HINSTANCE hPrevInstance, 
+	LPSTR lpCmdLine, 
+	int nCmdShow
+)
+{
+	{
+		FILE* fperr = nullptr;
+		errno_t e = freopen_s(&fperr, "stderr.log", "w", stderr);
+		if( e != 0 ){
+			errMsg("main", "Failed to redirect stderr: %d", e);
+		}
+	}
+	{ //redirect stdout/stderr to file.
+		FILE* fpout = nullptr;
+		errno_t e = freopen_s(&fpout, "stdout.log", "w", stdout);
+		if( e != 0 ){
+			errMsg("main", "Failed to redirect stdout: %d", e);
+		}
+	}
+	logMsg("main", "Launching");
+	int const r = mainImpl();
+	fclose(stderr);
+	fclose(stdout);
+	return r;
 }
 
