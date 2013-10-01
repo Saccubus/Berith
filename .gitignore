@@ -1,0 +1,7 @@
+*.sdf
+x64/
+Debug/
+Release/
+ipch/
+Berith.opensdf
+Berith.v11.suo
