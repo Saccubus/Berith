@@ -13,7 +13,7 @@ static std::wstring getJavaPath()
 		if(0 == _wgetenv_s(&size, buff, L"JAVA_HOME") && size > 0){
 			return buff;
 		}
-		logMsg("getJavaPath", "$JAVA_HOME is not set.");
+		warnMsg("getJavaPath", "$JAVA_HOME is not set.");
 	}
 	{
 		HKEY key;

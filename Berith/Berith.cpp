@@ -26,7 +26,7 @@ int mainImpl()
 //		}
 //	}
 	std::string jarFilename = progDir+JarFilename;
-	if(!fileExists(jarFilename)){
+	if( !fileExists(jarFilename) ){
 		errMsg("main","Jar not found! => \"%s\"\n", jarFilename.c_str());
 		return -1;
 	}
@@ -64,24 +64,10 @@ int WINAPI WinMain(
 	int nCmdShow
 )
 {
-	{
-		FILE* fperr = nullptr;
-		errno_t e = freopen_s(&fperr, "stderr.log", "w", stderr);
-		if( e != 0 ){
-			errMsg("main", "Failed to redirect stderr: %d", e);
-		}
-	}
-	{ //redirect stdout/stderr to file.
-		FILE* fpout = nullptr;
-		errno_t e = freopen_s(&fpout, "stdout.log", "w", stdout);
-		if( e != 0 ){
-			errMsg("main", "Failed to redirect stdout: %d", e);
-		}
-	}
+	initUtil();
 	logMsg("main", "Launching");
 	int const r = mainImpl();
-	fclose(stderr);
-	fclose(stdout);
+	closeUtil();
 	return r;
 }
 

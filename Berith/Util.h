@@ -9,3 +9,8 @@ void errMsg(const wchar_t* const tag, const wchar_t* const fmt, ...);
 void errMsg(const char* const tag, const char* const fmt, ...);
 void logMsg(const wchar_t* const tag, const wchar_t* const fmt, ...);
 void logMsg(const char* const tag, const char* const fmt, ...);
+void warnMsg(const wchar_t* const tag, const wchar_t* const fmt, ...);
+void warnMsg(const char* const tag, const char* const fmt, ...);
+
+void initUtil();
+void closeUtil();
