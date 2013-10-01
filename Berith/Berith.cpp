@@ -8,24 +8,19 @@
 std::string const MainKlass = std::string("saccubus/Saccubus");
 std::string const JarFilename = std::string("Saccubus.jar");
 
-int mainImpl()
+int mainImpl(std::wstring const& moduleFilename)
 {
 	std::vector<std::string> vmArgs;
 	std::vector<std::wstring> progArgs;
 	
-	std::string progDir;
-	{
-		wchar_t buff[8192];
-		GetModuleFileName(GetModuleHandle(NULL), buff, 8192);
-		progDir = (toMultiByte(getDirname(buff)));
-	}
+	std::string const progDir = toMultiByte(getDirname(moduleFilename.c_str()));
 //	for( int i=0; i<argc; ++i ) {
 //		fwprintf(stdout, (L"[main] [%d] \"%s\"\n"), i, argv[i]);
 //		if(i>=1){
 //			progArgs.emplace_back(argv[i]);
 //		}
 //	}
-	std::string jarFilename = progDir+JarFilename;
+	std::string const jarFilename = progDir+JarFilename;
 	if( !fileExists(jarFilename) ){
 		errMsg("main","Jar not found! => \"%s\"\n", jarFilename.c_str());
 		return -1;
@@ -56,6 +51,15 @@ int mainImpl()
 	return r ? 0 : 1;
 }
 
+int main(int argc, wchar_t** argv)
+{
+	initUtil();
+	logMsg("main", "Launching");
+	int const r = mainImpl(argv[0]);
+	closeUtil();
+	return r;
+}
+
 //int _tmain(int argc, wchar_t* argv[])
 int WINAPI WinMain(
 	HINSTANCE hInstance, 
@@ -66,7 +70,9 @@ int WINAPI WinMain(
 {
 	initUtil();
 	logMsg("main", "Launching");
-	int const r = mainImpl();
+	wchar_t buff[8192];
+	GetModuleFileName(GetModuleHandle(NULL), buff, 8192);
+	int const r = mainImpl(buff);
 	closeUtil();
 	return r;
 }

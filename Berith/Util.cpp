@@ -36,7 +36,7 @@ void closeUtil()
 	fclose(fpout);
 }
 
-std::wstring getDirname(wchar_t* dir)
+std::wstring getDirname(const wchar_t* dir)
 {
 	auto size = wcslen(dir);
 	std::vector<wchar_t> drive_;
