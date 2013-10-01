@@ -22,7 +22,7 @@ int mainImpl(std::wstring const& moduleFilename)
 //	}
 	std::string const jarFilename = progDir+JarFilename;
 	if( !fileExists(jarFilename) ){
-		errMsg("main","Jar not found! => \"%s\"\n", jarFilename.c_str());
+		errMsg("main","Jar not found! => \"%s\"", jarFilename.c_str());
 		return -1;
 	}
 	vmArgs.push_back(std::string("-Djava.class.path=")+jarFilename);
@@ -31,12 +31,12 @@ int mainImpl(std::wstring const& moduleFilename)
 	bool const r = withJava(vmArgs, progArgs, [&progArgs](JavaVM* vm, JNIEnv* env)->bool{
 		jclass klass = env->FindClass( MainKlass.c_str() );
 		if(!klass) {
-			errMsg("main", "Klass %s not found.\n", MainKlass.c_str());
+			errMsg("main", "Klass %s not found.", MainKlass.c_str());
 			return false;
 		}
 		jmethodID method = env->GetStaticMethodID(klass, "main", "([Ljava/lang/String;)V");
 		if(!method) {
-			errMsg("main", "method main not found.\n");
+			errMsg("main", "method main not found.");
 			return false;
 		}
 		jobjectArray array = (jobjectArray)env->NewObjectArray(static_cast<jsize>(progArgs.size()), env->FindClass("java/lang/String"), env->NewStringUTF(""));
