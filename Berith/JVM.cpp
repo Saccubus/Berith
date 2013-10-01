@@ -70,8 +70,8 @@ static PtrCreateJavaVM loadJvm()
 			return nullptr;
 		}
 		ptrCreateJavaVM = (PtrCreateJavaVM)GetProcAddress(hinstLib,"JNI_CreateJavaVM");
-		if( ptrCreateJavaVM ) {
-			CERR("loadJvm", "failed to Get JNI_CreateJavaVM addr.\nMaybe jvm library is broken.");
+		if( !ptrCreateJavaVM ) {
+			CERR("loadJvm", "failed to Get JNI_CreateJavaVM addr.\nMaybe jvm library is broken.\nJAVA_HOME=\"%s\"", javaPath.c_str() );
 			return nullptr;
 		}
 	}
