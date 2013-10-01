@@ -33,3 +33,41 @@ bool fileExists(std::wstring const& path)
 	DWORD const dwAttrib = GetFileAttributesW(const_cast<wchar_t*>(path.c_str()));
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
+
+
+void showErrorDialog(std::wstring const& title, std::wstring const& contents, ...)
+{
+	wchar_t buff[8192];
+	va_list args;
+	va_start(args, contents);
+	vswprintf_s(buff, contents.c_str(), args);
+	va_end(args);
+	MessageBoxW(NULL, buff, (std::wstring(L"Error at ")+title).c_str(),MB_OK | MB_ICONERROR);
+}
+
+void showErrorDialog(std::string const& title, std::string const& contents, ...)
+{
+	char buff[8192];
+	va_list args;
+	va_start(args, contents);
+	vsprintf_s(buff, contents.c_str(), args);
+	va_end(args);
+	MessageBoxA(NULL, buff, (std::string("Error at ")+title).c_str(),MB_OK | MB_ICONERROR);
+}
+
+void logMessage(std::string const& tag, std::string const& fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	vfprintf_s(stdout, fmt.c_str(), args);
+	va_end(args);
+
+}
+void logMessage(std::wstring const& tag, std::wstring const& fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	vfwprintf_s(stdout, fmt.c_str(), args);
+	va_end(args);
+
+}

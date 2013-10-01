@@ -17,6 +17,7 @@ static std::wstring getJavaPath()
 		if(0 == _wgetenv_s(&size, buff, L"JAVA_HOME") && size > 0){
 			return buff;
 		}
+		COUT("getJavaPath", "$JAVA_HOME is not set.");
 	}
 	{
 		HKEY key;
@@ -38,6 +39,7 @@ static std::wstring getJavaPath()
 		if( !ans.empty() ){
 			return ans;
 		}
+		COUT("getJavaPath", "Registory value is not set.");
 	}
 	CERR("JVM", "Java VM not installed.");
 	return L"";
@@ -47,12 +49,12 @@ static PtrCreateJavaVM loadJvm()
 {
 	static PtrCreateJavaVM ptrCreateJavaVM = nullptr;
 	if(!ptrCreateJavaVM){
-		std::wstring javaPath ( getJavaPath() );
+		std::wstring const javaPath ( getJavaPath() );
 		if( javaPath.empty() ) {
 			return nullptr;
 		}
-		std::wstring clientJvm = javaPath + L"\\bin\\client\\jvm.dll";
-		std::wstring serverJvm = javaPath + L"\\bin\\server\\jvm.dll";
+		std::wstring const clientJvm = javaPath + L"\\bin\\client\\jvm.dll";
+		std::wstring const serverJvm = javaPath + L"\\bin\\server\\jvm.dll";
 		
 		HINSTANCE hinstLib = nullptr;
 		if(fileExists(clientJvm)){
@@ -61,7 +63,7 @@ static PtrCreateJavaVM loadJvm()
 			hinstLib = LoadLibrary(serverJvm.c_str());
 		}
 		if( !hinstLib ) {
-			CERR("JVM", "failed to open jvm.dll");
+			CERR("loadJvm", "failed to open jvm.dll");
 			return nullptr;
 		}
 		ptrCreateJavaVM = (PtrCreateJavaVM)GetProcAddress(hinstLib,"JNI_CreateJavaVM");
@@ -106,7 +108,7 @@ bool withJava(std::vector<std::string> vmArgs, std::vector<std::wstring> progArg
 		{ //vm‚Æenv‚ðŽæ“¾‚·‚é
 			jint ret = initFunc(&vm, (void**)&env, &vm_args);
 			if (ret != JNI_OK) {
-				printf("create vm error:%d\n", ret);
+				CERR("withJava", "create vm error:%d\n", ret);
 				return false;
 			}
 		}
