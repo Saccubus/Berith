@@ -11,6 +11,7 @@ std::string const JarFilename = std::string("Saccubus.jar");
 
 int _tmain(int argc, wchar_t* argv[])
 {
+
 	std::vector<std::string> vmArgs;
 	std::vector<std::wstring> progArgs;
 	std::string progDir(toMultiByte(getDirname(argv[0])));

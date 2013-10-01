@@ -19,3 +19,5 @@
 #include <string>
 #include <vector>
 #include <Windows.h>
+#include <cwchar>
+#include <sstream>

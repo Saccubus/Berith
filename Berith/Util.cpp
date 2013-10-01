@@ -27,3 +27,9 @@ bool fileExists(std::string const& path)
 	DWORD const dwAttrib = GetFileAttributesA(const_cast<char*>(path.c_str()));
 	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
+
+bool fileExists(std::wstring const& path)
+{
+	DWORD const dwAttrib = GetFileAttributesW(const_cast<wchar_t*>(path.c_str()));
+	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+}
