@@ -42,6 +42,7 @@ void showErrorDialog(std::wstring const& title, std::wstring const& contents, ..
 	va_start(args, contents);
 	vswprintf_s(buff, contents.c_str(), args);
 	va_end(args);
+	fprintf_s(stderr, "[%s] %s\n", title.c_str(), buff);
 	MessageBoxW(NULL, buff, (std::wstring(L"Error at ")+title).c_str(),MB_OK | MB_ICONERROR);
 }
 
@@ -52,6 +53,7 @@ void showErrorDialog(std::string const& title, std::string const& contents, ...)
 	va_start(args, contents);
 	vsprintf_s(buff, contents.c_str(), args);
 	va_end(args);
+	fprintf_s(stderr, "[%s] %s\n", title.c_str(), buff);
 	MessageBoxA(NULL, buff, (std::string("Error at ")+title).c_str(),MB_OK | MB_ICONERROR);
 }
 
