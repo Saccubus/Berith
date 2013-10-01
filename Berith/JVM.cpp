@@ -1,13 +1,20 @@
 #include "stdafx.h"
 #include "JVM.h"
 
-bool withJava(std::vector<std::string> vmArgs, std::vector<tstring> progArgs,std::function<bool(JavaVM* vm, JNIEnv* env)> const& f)
+static void error(std::string const& title, std::string const& msg)
+{
+	
+}
+
+bool withJava(std::vector<std::string> vmArgs, std::vector<std::wstring> progArgs,std::function<bool(JavaVM* vm, JNIEnv* env)> const& f)
 {
 	JavaVMInitArgs vm_args;
 	vm_args.version = JNI_VERSION_1_6;
 	{ //èâä˙âªÇ∑ÇÈ
 		jint ret = JNI_GetDefaultJavaVMInitArgs(&vm_args);
-		if( ret < 0 ){
+		if (ret != JNI_OK) {
+			CERR("withJava", "Failed to open jvm: %d", ret);
+			return false;
 		}
 	}
 	COUT("withJava", "vm_args.version:%x\n", vm_args.version);
@@ -19,7 +26,7 @@ bool withJava(std::vector<std::string> vmArgs, std::vector<tstring> progArgs,std
 		opts.push_back( op );
 	}
 
-	vm_args.nOptions = opts.size();
+	vm_args.nOptions = static_cast<jint>(opts.size());
 	vm_args.options  = opts.data();
 
 	JavaVM* vm;
@@ -29,12 +36,11 @@ bool withJava(std::vector<std::string> vmArgs, std::vector<tstring> progArgs,std
 		jint ret = JNI_CreateJavaVM(&vm, (void**)&env, &vm_args);
 		if (ret != JNI_OK) {
 			printf("create vm error:%d\n", ret);
-			return ret;
+			return false;
 		}
 	}
-	vm->AttachCurrentThread((void**)env, nullptr);
 	bool const r = f(vm, env);
-	vm->DetachCurrentThread();
 	vm->DestroyJavaVM();
+	COUT("withJava", "VM destroyed", vm_args.version);
 	return r;
 }
