@@ -76,7 +76,7 @@ int WINAPI WinMain(
 		ZeroMemory(&startupInfo,sizeof(startupInfo));
 		startupInfo.cb = sizeof(startupInfo);
 		startupInfo.dwFlags = STARTF_USESHOWWINDOW;
-		startupInfo.wShowWindow = SW_MAX;
+		startupInfo.wShowWindow = SW_HIDE;
 		if (0 == CreateProcessW(
 				buff,
 				NULL,
