@@ -10,13 +10,36 @@ static HANDLE fhandle;
 void initUtil()
 {
 	fhandle = CreateFileW(L"launch.log",GENERIC_WRITE,FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+
 	if(INVALID_HANDLE_VALUE == fhandle){
-		errMsg("init", "Failed to open launch.log");
+		errDlg(GetLastError(), "init", "init", "Failed to open launch.log: %d", GetLastError());
+		return;
 	}
-	SetStdHandle(STD_OUTPUT_HANDLE, fhandle);
-	SetStdHandle(STD_ERROR_HANDLE, fhandle);
+	if( 0 == SetStdHandle(STD_OUTPUT_HANDLE, fhandle) ) {
+		errDlg(GetLastError(), "init", "Failed to set STD_OUTPUT_HANDLE: %d", GetLastError());
+	}
+	if ( 0 == SetStdHandle(STD_ERROR_HANDLE, fhandle) ) {
+		errDlg(GetLastError(), "init", "Failed to set STD_ERROR_HANDLE: %d", GetLastError());
+	}
+
+	const HANDLE hStandard = GetStdHandle(STD_OUTPUT_HANDLE);
+	if( INVALID_HANDLE_VALUE == hStandard ) {
+		errDlg(GetLastError(), "init", "Failed to open STD_OUTPUT_HANDLE : %d", GetLastError());
+	}
+	const HANDLE hError = GetStdHandle(STD_ERROR_HANDLE);
+	if( INVALID_HANDLE_VALUE == hError ) {
+		errDlg(GetLastError(), "init", "Failed to open STD_ERROR_HANDLE : %d", GetLastError());
+	}
+
+	if( hStandard != fhandle ) {
+		errMsg("init", "STD_OUTPUT_HANDLE mismatched: %d != %d", hStandard, fhandle);
+	}
+	if( hError != fhandle ) {
+		errMsg("init", "STD_ERROR_HANDLE mismatched: %d != %d", hError, fhandle);
+	}
 
 	logMsg("init", "stdout reopened.");
+	warnMsg("init", "stderr reopened.");
 }
 void closeUtil()
 {
@@ -58,13 +81,38 @@ bool fileExists(std::wstring const& path)
 
 #define BUFF_SIZE (1024*16)
 
-static std::wstring getLastErrorMsg()
+static std::wstring getLastErrorMsg(DWORD errorCode)
 {
 	wchar_t* buff_;
-	FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), LANG_USER_DEFAULT, (LPWSTR)&buff_, 0, 0);
+	FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM, 0, errorCode, LANG_USER_DEFAULT, (LPWSTR)&buff_, 0, 0);
 	std::wstring r(buff_);
 	LocalFree(buff_);
 	return r;
+}
+
+void errDlg(DWORD errCode, const wchar_t* const tag, const wchar_t* const fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	{
+		wchar_t buff[BUFF_SIZE];
+		auto msg = getLastErrorMsg(errCode);
+		_vsnwprintf_s(buff, BUFF_SIZE, fmt, args);
+		MessageBoxW(NULL, (std::wstring(buff)+L"\n"+msg).c_str(), L"Error",MB_OK | MB_ICONERROR);
+	}
+	va_end(args);
+}
+void errDlg(DWORD errCode, const char* const tag, const char* const fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	{
+		char buff[BUFF_SIZE];
+		auto msg = toMultiByte(getLastErrorMsg(errCode));
+		_vsnprintf_s(buff, BUFF_SIZE, fmt, args);
+		MessageBoxA(NULL, (std::string(buff)+"\n"+msg).c_str(), "Error",MB_OK | MB_ICONERROR);
+	}
+	va_end(args);
 }
 
 static void outMsg(DWORD stream, bool enableDiag, const wchar_t* const tag, const wchar_t* const fmt, va_list args)
@@ -74,14 +122,15 @@ static void outMsg(DWORD stream, bool enableDiag, const wchar_t* const tag, cons
 	memset(buff_, 0, BUFF_SIZE);
 	memset(buff, 0, BUFF_SIZE);
 	_vsnwprintf_s(buff_, BUFF_SIZE, fmt, args);
-	DWORD len = _snwprintf_s(buff, BUFF_SIZE, L"[%s] %s\n", tag, buff_);
-	HANDLE hand = GetStdHandle(stream);
+	const DWORD len = _snwprintf_s(buff, BUFF_SIZE, L"[%s] %s\n", tag, buff_);
+	const HANDLE hand = GetStdHandle(stream);
 	DWORD wlen;
-	auto str = toMultiByte(buff);
-	if( 0 == WriteFile(hand, str.c_str(), str.size(), &wlen, nullptr) ){
-		auto msg = getLastErrorMsg();
-		_snwprintf_s(buff, BUFF_SIZE, L"Failed to write console");
-		MessageBoxW(NULL, (std::wstring(buff)+L"\n"+msg).c_str(), L"Error",MB_OK | MB_ICONERROR);
+	const auto str = toMultiByte(buff);
+	SetLastError(0);
+	const BOOL result = WriteFile(hand, str.c_str(), static_cast<DWORD>(str.size()), &wlen, nullptr);
+	if( result == 0 ){
+		const DWORD errCode = GetLastError();
+		errDlg(errCode, tag, L"Failed to write console: %d", errCode);
 	}
 
 	if(enableDiag){
@@ -96,14 +145,14 @@ static void outMsg(DWORD stream, bool enableDiag, const char* const tag, const c
 	memset(buff_, 0, BUFF_SIZE);
 	memset(buff, 0, BUFF_SIZE);
 	vsnprintf_s(buff_, BUFF_SIZE, fmt, args);
-	DWORD len = _snprintf_s(buff, BUFF_SIZE, "[%s] %s\n", tag, buff_);
-	HANDLE hand = GetStdHandle(stream);
+	const DWORD len = _snprintf_s(buff, BUFF_SIZE, "[%s] %s\n", tag, buff_);
+	const HANDLE hand = GetStdHandle(stream);
 	DWORD wlen;
-	if( 0 == WriteFile(hand, buff, len, &wlen, nullptr) ){
-		auto msg = getLastErrorMsg();
-		wchar_t buff[BUFF_SIZE];
-		_snwprintf_s(buff, BUFF_SIZE, L"Failed to write console");
-		MessageBoxW(NULL, (std::wstring(buff)+L"\n"+msg).c_str(), L"Error",MB_OK | MB_ICONERROR);
+	SetLastError(0);
+	BOOL result = WriteFile(hand, buff, len, &wlen, nullptr);
+	if( result == 0 ){
+		const DWORD errCode = GetLastError();
+		errDlg(errCode, tag, "Failed to write console: %d", errCode);
 	}
 
 	if(enableDiag){
