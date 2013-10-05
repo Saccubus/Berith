@@ -81,9 +81,11 @@ bool withJava(std::vector<std::wstring> vmArgs, std::vector<std::wstring> progAr
 	if(!initFunc){
 		return false;
 	}
+	std::vector<std::string> vmArgs_;
 	for( std::wstring const& e : vmArgs ) {
 		JavaVMOption op;
-		op.optionString = const_cast<char*>(toMultiByte(e).c_str());
+		vmArgs_.push_back(toMultiByte(e));
+		op.optionString = const_cast<char*>(vmArgs_.back().c_str());
 		op.extraInfo = 0;
 		opts.push_back( op );
 	}
