@@ -116,7 +116,7 @@ static void outMsg(DWORD stream, bool enableDiag, const wchar_t* const tag, cons
 	memset(buff_, 0, BUFF_SIZE);
 	memset(buff, 0, BUFF_SIZE);
 	_vsnwprintf_s(buff_, BUFF_SIZE, fmt, args);
-	_snwprintf_s(buff, BUFF_SIZE, L"[%s] %s\n", tag, buff_);
+	_snwprintf_s(buff, BUFF_SIZE, L"[%s] %s\r\n", tag, buff_);
 
 	const auto str = toMultiByte(buff);
 	SetLastError(0);
