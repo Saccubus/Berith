@@ -93,17 +93,6 @@ bool withJava(std::vector<std::string> vmArgs, std::vector<std::wstring> progArg
 	vm_args.ignoreUnrecognized=false;
 	vm_args.nOptions = static_cast<jint>(opts.size());
 	vm_args.options  = opts.data();
-/*
-	{ //èâä˙âªÇ∑ÇÈ
-		jint ret = JNI_GetDefaultJavaVMInitArgs(&vm_args);
-		if (ret != JNI_OK) {
-			errMsg("withJava", "Failed to open jvm: %d", ret);
-			return false;
-		}
-	}
-	COUT("withJava", "vm_args.version:%x\n", vm_args.version);
-*/
-
 	{
 		JavaVM* vm;
 		JNIEnv* env;

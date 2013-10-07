@@ -30,7 +30,7 @@ int mainImpl(std::wstring const& moduleFilename, int argc, wchar_t** argv)
 	vmArgs.push_back(std::string("-Djava.class.path=")+jarFilename);
 	//vmArgs.push_back("-Djava.compiler=NONE");
 	//vmArgs.push_back("-verbose:jni");
-	bool const r = withJava(vmArgs, progArgs, [&progArgs](JavaVM* vm, JNIEnv* env)->bool{
+	bool const r = withJava(vmArgs, progArgs, [&progArgs](JavaVM* vm, JNIEnv* env) -> bool {
 		jclass klass = env->FindClass( MainKlass.c_str() );
 		if(!klass) {
 			errMsg("main", "Klass %s not found.", MainKlass.c_str());
@@ -42,12 +42,12 @@ int mainImpl(std::wstring const& moduleFilename, int argc, wchar_t** argv)
 			return false;
 		}
 		jobjectArray array = (jobjectArray)env->NewObjectArray(static_cast<jsize>(progArgs.size()), env->FindClass("java/lang/String"), env->NewStringUTF(""));
-
 		size_t const max = progArgs.size();
 		for(size_t i=0;i<max;++i){
 			env->SetObjectArrayElement(array, static_cast<jsize>(i), env->NewStringUTF(reinterpret_cast<const char*>(progArgs[i].c_str())));
 		}
 		env->CallStaticVoidMethod(klass, method, array);
+		env->DeleteLocalRef( klass );
 		return true;
 	});
 	return r ? 0 : 1;
