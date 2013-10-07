@@ -1,49 +1,61 @@
 #include "stdafx.h"
-#include "Util.h"
-#include <cassert>
 
+#include "Util.h"
+
+#include <cassert>
 #include <io.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 
-static HANDLE fhandle;
-void initUtil()
+ChangeStdHandle::ChangeStdHandle(std::wstring const& fname)
+:fhandle_(CreateFileW(fname.c_str() ,GENERIC_WRITE,FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr))
 {
-	fhandle = CreateFileW(L"launch.log",GENERIC_WRITE,FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	init(fname);
+}
 
-	if(INVALID_HANDLE_VALUE == fhandle){
-		errDlg(GetLastError(), "init", "init", "Failed to open launch.log: %d", GetLastError());
+ChangeStdHandle::ChangeStdHandle()
+:fhandle_(CreateFileW(L"launch.log",GENERIC_WRITE,FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr))
+{
+	init(L"launch.log");
+}
+
+void ChangeStdHandle::init(std::wstring const& fname)
+{
+	if(INVALID_HANDLE_VALUE == fhandle_){
+		errDlg(GetLastError(), L"init", L"ログファイル（%s）を開けません: %d", fname.c_str(), GetLastError());
 		return;
 	}
-	if( 0 == SetStdHandle(STD_OUTPUT_HANDLE, fhandle) ) {
-		errDlg(GetLastError(), "init", "Failed to set STD_OUTPUT_HANDLE: %d", GetLastError());
+	if( 0 == SetStdHandle(STD_OUTPUT_HANDLE, fhandle_) ) {
+		errDlg(GetLastError(), L"init", L"STD_OUTPUT_HANDLEの入れ替えに失敗: %d", GetLastError());
 	}
-	if ( 0 == SetStdHandle(STD_ERROR_HANDLE, fhandle) ) {
-		errDlg(GetLastError(), "init", "Failed to set STD_ERROR_HANDLE: %d", GetLastError());
+	if ( 0 == SetStdHandle(STD_ERROR_HANDLE, fhandle_) ) {
+		errDlg(GetLastError(), L"init", L"STD_ERROR_HANDLEの入れ替えに失敗: %d", GetLastError());
 	}
 
 	const HANDLE hStandard = GetStdHandle(STD_OUTPUT_HANDLE);
 	if( INVALID_HANDLE_VALUE == hStandard ) {
-		errDlg(GetLastError(), "init", "Failed to open STD_OUTPUT_HANDLE : %d", GetLastError());
+		errDlg(GetLastError(), L"init", L"STD_OUTPUT_HANDLEの取得に失敗しました : %d", GetLastError());
 	}
 	const HANDLE hError = GetStdHandle(STD_ERROR_HANDLE);
 	if( INVALID_HANDLE_VALUE == hError ) {
-		errDlg(GetLastError(), "init", "Failed to open STD_ERROR_HANDLE : %d", GetLastError());
+		errDlg(GetLastError(), L"init", L"STD_ERROR_HANDLEの取得に失敗しました : %d", GetLastError());
 	}
 
-	if( hStandard != fhandle ) {
-		errMsg("init", "STD_OUTPUT_HANDLE mismatched: %d != %d", hStandard, fhandle);
+	if( hStandard != fhandle_ ) {
+		errMsg(L"init", L"STD_OUTPUT_HANDLEが一致しません: %d != %d", hStandard, fhandle_);
 	}
-	if( hError != fhandle ) {
-		errMsg("init", "STD_ERROR_HANDLE mismatched: %d != %d", hError, fhandle);
+	if( hError != fhandle_ ) {
+		errMsg(L"init", L"STD_ERROR_HANDLEが一致しません: %d != %d", hError, fhandle_);
 	}
-
-	logMsg("init", "stdout reopened.");
-	warnMsg("init", "stderr reopened.");
+	logMsg(L"init", L"stdout reopened.");
+	warnMsg(L"init", L"stderr reopened.");
 }
-void closeUtil()
+
+ChangeStdHandle::~ChangeStdHandle()
 {
-	CloseHandle(fhandle);
+	logMsg(L"init", L"stdout closing...");
+	warnMsg(L"init", L"stderr closing...");
+	CloseHandle(fhandle_);
 }
 
 std::wstring getDirname(const wchar_t* dir)
@@ -65,12 +77,6 @@ std::string toMultiByte(std::wstring const& s)
 	buff.resize(r);
 	WideCharToMultiByte(CP_ACP, 0, s.c_str(), static_cast<int>(s.size()), buff.data(), static_cast<int>(r), nullptr, nullptr);
 	return std::string(buff.data(), buff.size());
-}
-
-bool fileExists(std::string const& path)
-{
-	DWORD const dwAttrib = GetFileAttributesA(const_cast<char*>(path.c_str()));
-	return (dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
 bool fileExists(std::wstring const& path)
@@ -102,18 +108,6 @@ void errDlg(DWORD errCode, const wchar_t* const tag, const wchar_t* const fmt, .
 	}
 	va_end(args);
 }
-void errDlg(DWORD errCode, const char* const tag, const char* const fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
-	{
-		char buff[BUFF_SIZE];
-		auto msg = toMultiByte(getLastErrorMsg(errCode));
-		_vsnprintf_s(buff, BUFF_SIZE, fmt, args);
-		MessageBoxA(NULL, (std::string(buff)+"\n"+msg).c_str(), "Error",MB_OK | MB_ICONERROR);
-	}
-	va_end(args);
-}
 
 static void outMsg(DWORD stream, bool enableDiag, const wchar_t* const tag, const wchar_t* const fmt, va_list args)
 {
@@ -122,43 +116,22 @@ static void outMsg(DWORD stream, bool enableDiag, const wchar_t* const tag, cons
 	memset(buff_, 0, BUFF_SIZE);
 	memset(buff, 0, BUFF_SIZE);
 	_vsnwprintf_s(buff_, BUFF_SIZE, fmt, args);
-	const DWORD len = _snwprintf_s(buff, BUFF_SIZE, L"[%s] %s\n", tag, buff_);
-	const HANDLE hand = GetStdHandle(stream);
-	DWORD wlen;
+	_snwprintf_s(buff, BUFF_SIZE, L"[%s] %s\r\n", tag, buff_);
+
 	const auto str = toMultiByte(buff);
 	SetLastError(0);
-	const BOOL result = WriteFile(hand, str.c_str(), static_cast<DWORD>(str.size()), &wlen, nullptr);
-	if( result == 0 ){
-		const DWORD errCode = GetLastError();
-		errDlg(errCode, tag, L"Failed to write console: %d", errCode);
-	}
-
-	if(enableDiag){
-		MessageBoxW(NULL, buff_, (std::wstring(L"Error at ")+tag).c_str(),MB_OK | MB_ICONERROR);
-	}
-}
-
-static void outMsg(DWORD stream, bool enableDiag, const char* const tag, const char* const fmt, va_list args)
-{
-	char buff_[BUFF_SIZE];
-	char buff[BUFF_SIZE];
-	memset(buff_, 0, BUFF_SIZE);
-	memset(buff, 0, BUFF_SIZE);
-	vsnprintf_s(buff_, BUFF_SIZE, fmt, args);
-	const DWORD len = _snprintf_s(buff, BUFF_SIZE, "[%s] %s\n", tag, buff_);
-	const HANDLE hand = GetStdHandle(stream);
+	
 	DWORD wlen;
-	SetLastError(0);
-	BOOL result = WriteFile(hand, buff, len, &wlen, nullptr);
-	if( result == 0 ){
+	if( WriteFile(GetStdHandle(stream), str.c_str(), static_cast<DWORD>(str.size()), &wlen, nullptr) == 0 ){
 		const DWORD errCode = GetLastError();
-		errDlg(errCode, tag, "Failed to write console: %d", errCode);
+		errDlg(errCode, tag, L"コンソールに書けません！\nエラーコード： %d", errCode);
 	}
 
 	if(enableDiag){
-		MessageBoxA(NULL, buff_, (std::string("Error at ")+tag).c_str(),MB_OK | MB_ICONERROR);
+		MessageBoxW(NULL, buff_, (std::wstring(L"[エラー] ")+tag).c_str(),MB_OK | MB_ICONERROR);
 	}
 }
+
 
 void errMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
 {
@@ -168,16 +141,6 @@ void errMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
 	outMsg(STD_ERROR_HANDLE, true, tag, fmt, args);
 	va_end(args);
 }
-
-void errMsg(const char* const tag, const char* const fmt, ...)
-{
-	assert( stderr == stderr );
-	va_list args;
-	va_start(args, fmt);
-	outMsg(STD_ERROR_HANDLE, true, tag, fmt, args);
-	va_end(args);
-}
-
 void logMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
 {
 	assert( stdout == stdout );
@@ -187,25 +150,7 @@ void logMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
 	va_end(args);
 }
 
-void logMsg(const char* const tag, const char* const fmt, ...)
-{
-	assert( stdout == stdout );
-	va_list args;
-	va_start(args, fmt);
-	outMsg(STD_OUTPUT_HANDLE, false, tag, fmt, args);
-	va_end(args);
-}
-
 void warnMsg(const wchar_t* const tag, const wchar_t* const fmt, ...)
-{
-	assert( stderr == stderr );
-	va_list args;
-	va_start(args, fmt);
-	outMsg(STD_ERROR_HANDLE, false, tag, fmt, args);
-	va_end(args);
-}
-
-void warnMsg(const char* const tag, const char* const fmt, ...)
 {
 	assert( stderr == stderr );
 	va_list args;
